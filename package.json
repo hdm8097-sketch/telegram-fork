@@ -1,0 +1,17 @@
+{
+  "name": "telegram-fork",
+  "version": "1.4.0",
+  "description": "عميل تلكرام مفتوح مبني بجافاسكريبت (Electron + GramJS MTProto)",
+  "main": "main.js",
+  "author": "EMAD ALDEEN",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  },
+  "dependencies": {
+    "teleproto": "^1.230.1"
+  }
+}
