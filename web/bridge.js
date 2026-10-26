@@ -53,9 +53,9 @@ window.tg = {
   moreMessages: (peerKey, offsetId) => svc.getChatHistory(peerKey, offsetId),
   sendMessage: (peerKey, text, replyTo) =>
     svc.sendMessage(peerKey, String(text || ''), Number(replyTo) || 0),
-  sendFile: (peerKey, fileRef, caption) =>
+  sendFile: (peerKey, fileRef, caption, opts) =>
     // في المتصفح fileRef هو كائن File مباشرة (لا مسار)
-    svc.sendFile(peerKey, fileRef, String(caption || '')),
+    svc.sendFile(peerKey, fileRef, String(caption || ''), opts && typeof opts === 'object' ? opts : {}),
   editMessage: (peerKey, msgId, text) =>
     svc.editMessage(peerKey, Number(msgId), String(text || '')),
   deleteMessage: (peerKey, msgId) => svc.deleteMessage(peerKey, Number(msgId)),

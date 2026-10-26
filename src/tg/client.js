@@ -421,11 +421,32 @@ class TelegramService extends EventEmitter {
     if (m instanceof Api.MessageMediaDocument) {
       const doc = m.document;
       const mime = (doc && doc.mimeType) || '';
+      const attrs = (doc && doc.attributes) || [];
       if (/webp/.test(mime)) return { type: 'sticker' };
-      if (/ogg|opus/.test(mime)) return { type: 'voice' };
-      if (/mp4|video|quicktime/.test(mime)) return { type: 'video' };
-      if (/audio/.test(mime)) return { type: 'audio' };
-      return { type: 'file', name: doc && doc.attributes ? this._docName(doc) : 'ملف', size: doc ? doc.size : 0 };
+      if (/gif/.test(mime) || attrs.some((a) => a instanceof Api.DocumentAttributeAnimated)) {
+        return { type: 'gif' };
+      }
+      // الصوت: نعتمد على السمة (Attribute) أولاً فهي الأدق — رسالة صوتية أم ملف صوتي
+      const aAudio = attrs.find((a) => a instanceof Api.DocumentAttributeAudio);
+      if (aAudio) {
+        const duration = Number(aAudio.duration) || 0;
+        const size = doc ? Number(doc.size) || 0 : 0;
+        if (aAudio.voice) return { type: 'voice', duration };
+        return { type: 'audio', duration, name: aAudio.title || this._docName(doc), size };
+      }
+      const aVideo = attrs.find((a) => a instanceof Api.DocumentAttributeVideo);
+      if (aVideo) {
+        return {
+          type: Number(aVideo.roundMessage) ? 'video-note' : 'video',
+          duration: Number(aVideo.duration) || 0,
+          name: this._docName(doc),
+          size: doc ? Number(doc.size) || 0 : 0,
+        };
+      }
+      if (/mp4|video|quicktime/.test(mime)) return { type: 'video', duration: 0 };
+      if (/ogg|opus/.test(mime)) return { type: 'voice', duration: 0 };
+      if (/audio/.test(mime)) return { type: 'audio', duration: 0, name: this._docName(doc), size: doc ? Number(doc.size) || 0 : 0 };
+      return { type: 'file', name: doc && doc.attributes ? this._docName(doc) : 'ملف', size: doc ? Number(doc.size) || 0 : 0 };
     }
     if (m instanceof Api.MessageMediaWebPage) {
       const web = m.webpage;
@@ -505,16 +526,26 @@ class TelegramService extends EventEmitter {
   }
 
   // إرسال ملف أو صورة (مسار محلي في Electron / كائن File في المتصفح)
-  async sendFile(peerKey, filePath, caption = '') {
+  // opts: { voiceNote, duration, mimeType } — تُستخدم لإرسال الرسائل الصوتية
+  async sendFile(peerKey, filePath, caption = '', opts = {}) {
     const client = await this._ensureClient();
     if (!WEB && !fs.existsSync(filePath)) {
       throw new Error('الملف غير موجود: ' + filePath);
     }
     const input = await this._resolvePeer(peerKey);
+    const extra = {};
+    if (opts && opts.voiceNote) {
+      extra.voiceNote = true;
+      const dur = Math.max(1, Math.round(Number(opts.duration) || 0));
+      // نمرّر سمة الصوت يدوياً حتى لو تعذّر كشف المدة من الملف
+      extra.attributes = [new Api.DocumentAttributeAudio({ voice: true, duration: dur })];
+      if (opts.mimeType) extra.mimeType = String(opts.mimeType);
+    }
     const sent = await client.sendFile(input, {
       file: filePath,
       caption: caption || '',
       parseMode: false,
+      ...extra,
     });
     const sender = this._senderInfo(sent);
     return this._serializeMessage(sent, sender);
@@ -780,23 +811,35 @@ class TelegramService extends EventEmitter {
     fs.mkdirSync(this.mediaDir, { recursive: true });
     const safeKey = String(peerKey).replace(/[^a-zA-Z0-9_-]/g, '_');
 
-    // امتداد الملف حسب نوعه الفعلي (صورة/ملصق/فيديو)
-    let ext = 'jpg';
+    // امتداد الملف حسب نوعه الفعلي (صورة/صوت/فيديو/مستند)
     const m = msg.media;
-    if (m instanceof Api.MessageMediaDocument && m.document) {
-      const mime = m.document.mimeType || '';
-      if (mime.includes('webp')) ext = 'webp';
-      else if (mime.includes('png')) ext = 'png';
-      else if (mime.includes('gif')) ext = 'gif';
-      else if (mime.includes('mp4')) ext = 'mp4';
-      else if (mime.includes('webm')) ext = 'webm';
-    }
+    const doc =
+      (m instanceof Api.MessageMediaDocument && m.document) ||
+      (m instanceof Api.MessageMediaWebPage && m.webpage && m.webpage.document) ||
+      null;
+    const ext = doc ? this._extForMime(doc.mimeType || '') : 'jpg';
 
     const outFile = path.join(this.mediaDir, `${safeKey}_${msgId}.${ext}`);
     if (fs.existsSync(outFile)) return outFile;
 
     const file = await client.downloadMedia(msg, outFile);
     return file || null;
+  }
+
+  // امتداد مناسب للوسائط حسب نوع MIME (لضمان تشغيل audio/video في المتصفح)
+  _extForMime(mime) {
+    const t = String(mime || '').toLowerCase();
+    if (t.includes('webp')) return 'webp';
+    if (t.includes('png')) return 'png';
+    if (t.includes('gif')) return 'gif';
+    if (t.includes('ogg') || t.includes('opus')) return 'ogg';
+    if (t.includes('mpeg') || t.includes('mp3')) return 'mp3';
+    if (t.includes('m4a') || t.includes('mp4a') || t.includes('aac')) return 'm4a';
+    if (t.includes('webm')) return 'webm';
+    if (t.includes('mp4') || t.includes('quicktime') || t.includes('mov')) return 'mp4';
+    if (t.includes('pdf')) return 'pdf';
+    if (t.includes('zip')) return 'zip';
+    return 'bin';
   }
 
   // ---------- التحديثات اللحظية ----------

@@ -171,10 +171,25 @@ ipcMain.handle('tg:send-message', async (_e, { peerKey, text, replyTo }) =>
   tg.sendMessage(peerKey, String(text || ''), Number(replyTo) || 0)
 );
 
-// إرسال ملف أو صورة
-ipcMain.handle('tg:send-file', async (_e, { peerKey, filePath, caption }) =>
-  tg.sendFile(peerKey, String(filePath || ''), String(caption || ''))
+// إرسال ملف أو صورة (opts اختيارية: {voiceNote, duration, mimeType} للرسائل الصوتية)
+ipcMain.handle('tg:send-file', async (_e, { peerKey, filePath, caption, opts }) =>
+  tg.sendFile(
+    peerKey,
+    String(filePath || ''),
+    String(caption || ''),
+    opts && typeof opts === 'object' ? opts : {}
+  )
 );
+
+// حفظ تسجيل صوتي مؤقت من الواجهة وإعادة مساره (الويب لا يحتاجه — يرسل Blob مباشرة)
+ipcMain.handle('tg:save-temp', async (_e, { buffer, name }) => {
+  const safe = path.basename(String(name || 'voice.webm')).replace(/[^\w.-]+/g, '_') || 'voice.webm';
+  const dir = path.join(app.getPath('temp'), 'tgfork');
+  fs.mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, `${Date.now()}_${safe}`);
+  fs.writeFileSync(file, Buffer.from(buffer));
+  return file;
+});
 
 // تعديل رسالة
 ipcMain.handle('tg:edit-message', async (_e, { peerKey, msgId, text }) =>

@@ -18,8 +18,9 @@ contextBridge.exposeInMainWorld('tg', {
     ipcRenderer.invoke('tg:more-messages', { peerKey, offsetId }),
   sendMessage: (peerKey, text, replyTo) =>
     ipcRenderer.invoke('tg:send-message', { peerKey, text, replyTo }),
-  sendFile: (peerKey, filePath, caption) =>
-    ipcRenderer.invoke('tg:send-file', { peerKey, filePath, caption }),
+  sendFile: (peerKey, filePath, caption, opts) =>
+    ipcRenderer.invoke('tg:send-file', { peerKey, filePath, caption, opts }),
+  saveTemp: (buffer, name) => ipcRenderer.invoke('tg:save-temp', { buffer, name }),
   editMessage: (peerKey, msgId, text) =>
     ipcRenderer.invoke('tg:edit-message', { peerKey, msgId, text }),
   deleteMessage: (peerKey, msgId) =>

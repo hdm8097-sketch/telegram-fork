@@ -1,6 +1,6 @@
 {
   "name": "telegram-fork",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "عميل تلكرام مفتوح مبني بجافاسكريبت (Electron + GramJS MTProto) — يعمل أيضاً كتطبيق ويب",
   "main": "main.js",
   "author": "EMAD ALDEEN",
