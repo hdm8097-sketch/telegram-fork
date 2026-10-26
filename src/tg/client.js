@@ -11,6 +11,10 @@ const { StringSession } = require('teleproto/sessions');
 const { NewMessage, EditedMessage, DeletedMessage, ChatAction } = require('teleproto/events');
 const { computeCheck } = require('teleproto/Password');
 
+// وضع المتصفح (نسخة الويب): يُعرَّف __WEB__ كثابت أثناء البناء (esbuild)
+// في Electron: القيمة false وتبقى فروع الملفات والحезд كما هي
+const WEB = typeof __WEB__ !== 'undefined' && __WEB__;
+
 // ألوان الصور الرمزية الدائرية (من لوحة تلكرام)
 const AVATAR_COLORS = [
   '#e17076', '#7bc862', '#65aadd', '#a695e7',
@@ -25,7 +29,7 @@ function pickColor(seed) {
 }
 
 class TelegramService extends EventEmitter {
-  constructor(configPath) {
+  constructor(configPath = null) {
     super();
     this.configPath = configPath;
     this.cfg = this._load();
@@ -35,19 +39,27 @@ class TelegramService extends EventEmitter {
     this.phone = null;
     this.phoneCodeHash = null;
     this.peerCache = new Map(); // peerKey -> كائن الكيان من GramJS
-    this.mediaDir = path.join(path.dirname(configPath), 'media');
+    this.mediaDir = WEB ? null : path.join(path.dirname(configPath), 'media');
     this._stickerCache = new Map(); // مفتاح الملصق -> Api.Document
     this._stickersList = null;      // قائمة الملصقات (تُجلب مرة واحدة)
     this._autoReplyAt = new Map();  // peerKey -> آخر رد تلقائي (ملي ثانية)
+    this._blobCache = new Map();    // وضع الويب: peerKey_msgId -> blob URL
   }
 
   // ---------- الإعدادات ----------
   _load() {
+    if (WEB) {
+      try { return JSON.parse(localStorage.getItem('tgfork:config') || '{}'); } catch { return {}; }
+    }
     try { return JSON.parse(fs.readFileSync(this.configPath, 'utf8')); } catch { return {}; }
   }
 
   _save(extra) {
     this.cfg = { ...this.cfg, ...extra };
+    if (WEB) {
+      try { localStorage.setItem('tgfork:config', JSON.stringify(this.cfg)); } catch {}
+      return;
+    }
     fs.mkdirSync(path.dirname(this.configPath), { recursive: true });
     fs.writeFileSync(this.configPath, JSON.stringify(this.cfg, null, 2), 'utf8');
   }
@@ -70,7 +82,14 @@ class TelegramService extends EventEmitter {
       new StringSession(this.cfg.session || ''),
       Number(this.cfg.apiId),
       String(this.cfg.apiHash),
-      { connectionRetries: 8, useWSS: true, autoReconnect: true }
+      WEB
+        ? {
+            // المتصفح: اتصال عبر WebSocket (لا توجد مقابع TCP في المتصفح)
+            connectionRetries: 8,
+            autoReconnect: true,
+            networkSocket: require('teleproto/extensions').PromisedWebSockets,
+          }
+        : { connectionRetries: 8, useWSS: true, autoReconnect: true }
     );
     await this.client.connect();
     this.client.addEventHandler((event) => this._onNewMessage(event), new NewMessage({}));
@@ -121,34 +140,38 @@ class TelegramService extends EventEmitter {
 
   // ---------- تسجيل الدخول ----------
   async sendCode(phone) {
-    const client = await this._ensureClient();
-    const result = await client.invoke(
-      new Api.auth.SendCode({
-        phoneNumber: phone,
-        apiId: Number(this.cfg.apiId),
-        apiHash: String(this.cfg.apiHash),
-        settings: new Api.CodeSettings({ allowAppHash: true }),
-      })
-    );
+    try {
+      const client = await this._ensureClient();
+      const result = await client.invoke(
+        new Api.auth.SendCode({
+          phoneNumber: phone,
+          apiId: Number(this.cfg.apiId),
+          apiHash: String(this.cfg.apiHash),
+          settings: new Api.CodeSettings({ allowAppHash: true }),
+        })
+      );
 
-    // حالة نادرة: الجلسة أُوفقت فوراً (كأن الدخول مكتمل عبر جلسة أخرى)
-    if (result instanceof Api.auth.SentCodeSuccess) {
+      // حالة نادرة: الجلسة أُوفقت فوراً (كأن الدخول مكتمل عبر جلسة أخرى)
+      if (result instanceof Api.auth.SentCodeSuccess) {
+        this.phone = phone;
+        return this._afterLogin(result.authorization && result.authorization.user);
+      }
+      if (result instanceof Api.auth.SentCodePaymentRequired) {
+        return {
+          ok: false,
+          error:
+            'تلكرام يطلب اشتراكاً مدفوعاً لاستخدام هذا المفتاح في إرسال رموز الدخول. ' +
+            'جرّب مفتاح API قديماً لديك، أو سجّل مفتاحاً جديداً من my.telegram.org واقرأ شروط الوصول المدفوع.',
+        };
+      }
+
       this.phone = phone;
-      return this._afterLogin(result.authorization && result.authorization.user);
+      this.phoneCodeHash = result.phoneCodeHash;
+      this._setState('need-code');
+      return { ok: true, next: 'code', delivery: this._deliveryLabel(result.type) };
+    } catch (err) {
+      return { ok: false, error: this._friendlyAuthError(err) };
     }
-    if (result instanceof Api.auth.SentCodePaymentRequired) {
-      return {
-        ok: false,
-        error:
-          'تلكرام يطلب اشتراكاً مدفوعاً لاستخدام هذا المفتاح في إرسال رموز الدخول. ' +
-          'جرّب مفتاح API قديماً لديك، أو سجّل مفتاحاً جديداً من my.telegram.org واقرأ شروط الوصول المدفوع.',
-      };
-    }
-
-    this.phone = phone;
-    this.phoneCodeHash = result.phoneCodeHash;
-    this._setState('need-code');
-    return { ok: true, next: 'code', delivery: this._deliveryLabel(result.type) };
   }
 
   _deliveryLabel(type) {
@@ -481,10 +504,12 @@ class TelegramService extends EventEmitter {
     return this._serializeMessage(sent, sender);
   }
 
-  // إرسال ملف أو صورة من مسار محلي على الجهاز
+  // إرسال ملف أو صورة (مسار محلي في Electron / كائن File في المتصفح)
   async sendFile(peerKey, filePath, caption = '') {
     const client = await this._ensureClient();
-    if (!fs.existsSync(filePath)) throw new Error('الملف غير موجود: ' + filePath);
+    if (!WEB && !fs.existsSync(filePath)) {
+      throw new Error('الملف غير موجود: ' + filePath);
+    }
     const input = await this._resolvePeer(peerKey);
     const sent = await client.sendFile(input, {
       file: filePath,
@@ -724,6 +749,29 @@ class TelegramService extends EventEmitter {
   }
 
   async getMediaPath(peerKey, msgId) {
+    // — وضع الويب: تنزيل إلى ذاكرة مؤقتة كـ blob URL (بلا ملفات) —
+    if (WEB) {
+      const cacheKey = `${peerKey}_${msgId}`;
+      const cached = this._blobCache.get(cacheKey);
+      if (cached) return cached;
+      const client = await this._ensureClient();
+      const input = await this._resolvePeer(peerKey);
+      const [msg] = await client.getMessages(input, { ids: [msgId] });
+      if (!msg || !msg.media) return null;
+      const buf = await client.downloadMedia(msg);
+      if (!buf || !buf.length) return null;
+      let type = 'image/jpeg';
+      const m = msg.media;
+      if (m instanceof Api.MessageMediaDocument && m.document) {
+        type = m.document.mimeType || 'application/octet-stream';
+      } else if (m instanceof Api.MessageMediaWebPage && m.webpage && m.webpage.document) {
+        type = m.webpage.document.mimeType || type;
+      }
+      const url = URL.createObjectURL(new Blob([buf], { type }));
+      this._blobCache.set(cacheKey, url);
+      return url;
+    }
+
     const client = await this._ensureClient();
     const input = await this._resolvePeer(peerKey);
     const [msg] = await client.getMessages(input, { ids: [msgId] });

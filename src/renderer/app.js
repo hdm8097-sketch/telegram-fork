@@ -1,7 +1,11 @@
 'use strict';
 /* ============================================================
    تليجرام فورك — منطق الواجهة (Renderer)
+   يعمل في Electron (file:) وفي المتصفح عبر الويب (http/https)
    ============================================================ */
+
+// وضع الويب: يُحمَّل من خادم (GitHub Pages) بدل ملف محلي
+const WEB = location.protocol !== 'file:';
 
 const $ = (id) => document.getElementById(id);
 
@@ -644,7 +648,10 @@ function loadVisiblePhotos() {
     window.tg
       .getMedia(peer, msgId)
       .then((file) => {
-        if (file && img.isConnected) img.src = 'file:///' + String(file).replace(/\\/g, '/');
+        if (!file || !img.isConnected) return;
+        const u = String(file);
+        // blob:/data:/http(s) في الويب — أو مسار محلي في Electron
+        img.src = /^(blob:|data:|https?:)/i.test(u) ? u : 'file:///' + u.replace(/\\/g, '/');
       })
       .catch(() => {});
   }
@@ -717,8 +724,8 @@ function startEdit(msg) {
 }
 
 // — الإرفاق —
-function setPendingFile(path, name) {
-  state.pendingFile = { path, name };
+function setPendingFile(path, name, file) {
+  state.pendingFile = { path, name, file };
   const chip = $('attach-chip');
   chip.textContent = '📎 ' + name;
   chip.classList.remove('hidden');
@@ -735,7 +742,7 @@ $('attach-chip').addEventListener('click', clearPendingFile);
 
 $('file-input').addEventListener('change', (e) => {
   const f = e.target.files[0];
-  if (f) setPendingFile(f.path, f.name);
+  if (f) setPendingFile(WEB ? null : f.path, f.name, f);
   e.target.value = '';
 });
 
@@ -745,9 +752,9 @@ $('msg-input').addEventListener('paste', (e) => {
   for (const it of items) {
     if (it.type && it.type.startsWith('image/')) {
       const f = it.getAsFile();
-      if (f && f.path) {
+      if (f && (WEB || f.path)) {
         e.preventDefault();
-        setPendingFile(f.path, f.name || 'صورة.png');
+        setPendingFile(WEB ? null : f.path, f.name || 'صورة.png', f);
       }
       return;
     }
@@ -791,13 +798,14 @@ async function sendCurrent() {
   if (state.pendingFile) {
     if (!state.activePeer || state.sending) return;
     state.sending = true;
-    const { path: filePath, name } = state.pendingFile;
+    const { path: filePath, name, file } = state.pendingFile;
     clearPendingFile();
     const caption = text;
     input.value = '';
     autosize(input);
     try {
-      const m = await window.tg.sendFile(state.activePeer, filePath, caption);
+      const ref = WEB ? file : filePath;
+      const m = await window.tg.sendFile(state.activePeer, ref, caption);
       if (!state.msgIds.has(m.id)) {
         state.msgIds.add(m.id);
         state.messages.push(m);
@@ -1330,8 +1338,8 @@ chatViewEl.addEventListener('drop', (e) => {
   dragDepth = 0;
   $('drop-overlay').classList.add('hidden');
   const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-  if (f && f.path) {
-    setPendingFile(f.path, f.name);
+  if (f && (WEB || f.path)) {
+    setPendingFile(WEB ? null : f.path, f.name, f);
     toast('المرفق جاهز: ' + f.name + ' — اكتب تعليقاً واضغط إرسال');
   } else if (f) {
     toast('تعذّر الوصول لمسار الملف', true);

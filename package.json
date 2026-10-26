@@ -1,15 +1,20 @@
 {
   "name": "telegram-fork",
-  "version": "1.4.0",
-  "description": "عميل تلكرام مفتوح مبني بجافاسكريبت (Electron + GramJS MTProto)",
+  "version": "1.5.0",
+  "description": "عميل تلكرام مفتوح مبني بجافاسكريبت (Electron + GramJS MTProto) — يعمل أيضاً كتطبيق ويب",
   "main": "main.js",
   "author": "EMAD ALDEEN",
   "license": "MIT",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "build:web": "node web/build.js"
   },
   "devDependencies": {
-    "electron": "^33.0.0"
+    "buffer": "^6.0.3",
+    "esbuild": "^0.25.0",
+    "events": "^3.3.0",
+    "electron": "^33.0.0",
+    "pako": "^2.1.0"
   },
   "dependencies": {
     "teleproto": "^1.230.1"

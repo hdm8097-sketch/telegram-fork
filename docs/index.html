@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' wss: https:; img-src 'self' blob: data:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:" />
+  <title>تليجرام فورك</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- شاشة تحميل أولية -->
+  <div id="boot" class="boot">
+    <svg viewBox="0 0 24 24" width="56" height="56" class="boot-logo"><path fill="#5288c1" d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
+  </div>
+
+  <!-- ============ شاشة 1: إعداد مفتاح API ============ -->
+  <section id="screen-api" class="screen auth-screen hidden">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <svg viewBox="0 0 24 24" width="64" height="64"><path fill="#fff" d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
+      </div>
+      <h1>تليجرام فورك</h1>
+      <p class="auth-sub">عميل مفتوح مبني بجافاسكريبت — يتصل مباشرة بخوادم تلكرام عبر بروتوكول MTProto.</p>
+
+      <label class="field">
+        <span>رقم المعرّف (API ID)</span>
+        <input id="api-id" type="text" inputmode="numeric" placeholder="مثال: 12345678" autocomplete="off" dir="ltr" />
+      </label>
+      <label class="field">
+        <span>المفتاح السري (API Hash)</span>
+        <input id="api-hash" type="text" placeholder="32 حرفاً_hex" autocomplete="off" dir="ltr" />
+      </label>
+
+      <p class="auth-hint">
+        تحصل على المفتاحين مجاناً من
+        <a href="#" id="link-mytelegram">my.telegram.org</a>
+        ← قسم «الأدوات البرمجية».
+      </p>
+
+      <button id="btn-save-api" class="btn-primary">حفظ ومتابعة</button>
+      <p id="api-error" class="auth-error hidden"></p>
+    </div>
+  </section>
+
+  <!-- ============ شاشة 2: رقم الهاتف ============ -->
+  <section id="screen-phone" class="screen auth-screen hidden">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <svg viewBox="0 0 24 24" width="64" height="64"><path fill="#fff" d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
+      </div>
+      <h1>تسجيل الدخول</h1>
+      <p class="auth-sub">أدخل رقم هاتفك مع رمز الدولة، وسنرسل لك رمز تحقق.</p>
+
+      <label class="field">
+        <span>رقم الهاتف</span>
+        <input id="phone-input" type="tel" placeholder="+966 5X XXX XXXX" autocomplete="off" dir="ltr" />
+      </label>
+
+      <button id="btn-send-code" class="btn-primary">إرسال الرمز</button>
+      <p id="phone-error" class="auth-error hidden"></p>
+      <button id="btn-change-api" class="btn-link">تغيير مفتاح API</button>
+    </div>
+  </section>
+
+  <!-- ============ شاشة 3: رمز التحقق ============ -->
+  <section id="screen-code" class="screen auth-screen hidden">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <svg viewBox="0 0 24 24" width="64" height="64"><path fill="#fff" d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
+      </div>
+      <h1>أدخل رمز التحقق</h1>
+      <p id="code-delivery" class="auth-sub">أُرسل الرمز إلى تطبيق تلكرام على هاتفك.</p>
+
+      <label class="field">
+        <span>الرمز</span>
+        <input id="code-input" type="text" inputmode="numeric" placeholder="·····" maxlength="10" autocomplete="one-time-code" dir="ltr" />
+      </label>
+
+      <button id="btn-sign-in" class="btn-primary">تأكيد</button>
+      <p id="code-error" class="auth-error hidden"></p>
+      <div class="auth-links">
+        <button id="btn-back-phone" class="btn-link">تغيير الرقم</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ شاشة 4: كلمة مرور التحقق بخطوتين ============ -->
+  <section id="screen-password" class="screen auth-screen hidden">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <svg viewBox="0 0 24 24" width="64" height="64"><path fill="#fff" d="M12 1a5 5 0 00-5 5v3H6a2 2 0 00-2 2v9a2 2 0 002 2h12a2 2 0 002-2v-9a2 2 0 00-2-2h-1V6a5 5 0 00-5-5zm3 8H9V6a3 3 0 116 0v3z"/></svg>
+      </div>
+      <h1>التحقق بخطوتين</h1>
+      <p class="auth-sub">هذا الحساب محمي بكلمة مرور سرية (Two-Step Verification).</p>
+
+      <label class="field">
+        <span>كلمة المرور</span>
+        <input id="password-input" type="password" placeholder="كلمة المرور السرية" autocomplete="current-password" />
+      </label>
+
+      <button id="btn-password" class="btn-primary">دخول</button>
+      <p id="password-error" class="auth-error hidden"></p>
+    </div>
+  </section>
+
+  <!-- ============ الشاشة الرئيسية ============ -->
+  <section id="screen-main" class="screen hidden">
+    <aside class="sidebar">
+      <header class="sidebar-header">
+        <div class="me-info">
+          <div id="me-avatar" class="avatar avatar-md">؟</div>
+          <div class="me-text">
+            <div id="me-name" class="me-name">…</div>
+            <div id="me-status" class="me-status">متصل</div>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button id="btn-settings" class="icon-btn" title="الإعدادات">⚙</button>
+          <button id="btn-logout" class="icon-btn" title="تسجيل الخروج">⎋</button>
+        </div>
+      </header>
+
+      <div class="search-wrap">
+        <input id="search-input" type="search" placeholder="بحث في المحادثات…" autocomplete="off" />
+      </div>
+
+        <div id="dialogs-list" class="dialogs-list"></div>
+    </aside>
+
+    <main class="chat">
+      <div id="chat-placeholder" class="chat-placeholder">
+        <svg viewBox="0 0 24 24" width="96" height="96"><path fill="#3a4a5c" d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
+        <p>اختر محادثة لعرض الرسائل</p>
+      </div>
+
+      <div id="chat-view" class="chat-view hidden">
+        <header class="chat-header">
+          <div id="chat-avatar" class="avatar avatar-md">؟</div>
+          <div class="chat-header-text">
+            <div id="chat-title" class="chat-title">…</div>
+            <div id="chat-subtitle" class="chat-subtitle"></div>
+          </div>
+          <button id="btn-chat-search" class="icon-btn header-btn" title="بحث في هذه المحادثة">🔍</button>
+        </header>
+
+        <div id="chat-search-bar" class="chat-search hidden">
+          <input id="chat-search-input" type="search" placeholder="بحث في هذه المحادثة…" autocomplete="off" />
+          <button id="chat-search-close" class="icon-btn" title="إغلاق البحث">✕</button>
+        </div>
+
+        <div id="messages-area" class="messages-area">
+          <div id="drop-overlay" class="drop-overlay hidden">أفلت الملفات هنا لإرسالها</div>
+          <div id="search-in-chat" class="search-in-chat hidden"></div>
+          <div id="messages" class="messages"></div>
+        </div>
+
+        <footer class="composer-wrap">
+          <div id="context-bar" class="context-bar hidden"></div>
+          <div id="attach-chip" class="attach-chip hidden" title="نقر لإلغاء الإرفاق"></div>
+          <div id="sticker-panel" class="sticker-panel hidden">
+            <div class="sp-head">
+              <span class="sp-tab active">الملصقات الأخيرة</span>
+            </div>
+            <div id="sticker-grid" class="sticker-grid"></div>
+          </div>
+          <div class="composer">
+            <button id="btn-stickers" class="attach-btn" title="الملصقات">
+              <svg viewBox="0 0 24 24" width="22" height="22"><path fill="#6d7f8f" d="M13.5 2C6.6 2 2 6.1 2 11.5c0 2.9 1.4 5.5 3.6 7.2L4.4 22l3.7-1.6c1.4.7 3 1.1 4.7 1.1h.4c-.1-.4-.2-.9-.2-1.4 0-4.7 4.5-8.5 10-8.5h.5C22.1 7 18.3 2 13.5 2zm-4.7 10.7a1.3 1.3 0 110-2.6 1.3 1.3 0 010 2.6zm3.4-3.4a1.3 1.3 0 110-2.6 1.3 1.3 0 010 2.6zm3.4 0a1.3 1.3 0 110-2.6 1.3 1.3 0 010 2.6zm2.7 3.4a1.3 1.3 0 110-2.6 1.3 1.3 0 010 2.6z" opacity=".9"/></svg>
+            </button>
+            <button id="btn-attach" class="attach-btn" title="إرفاق صورة أو ملف">
+              <svg viewBox="0 0 24 24" width="22" height="22"><path fill="#6d7f8f" d="M16.5 6v11.5a4.5 4.5 0 01-9 0V5a3 3 0 016 0v10.5a1.5 1.5 0 01-3 0V6H10v9.5a3 3 0 006 0V5a4.5 4.5 0 00-9 0v12.5a6 6 0 0012 0V6h-2.5z"/></svg>
+            </button>
+            <textarea id="msg-input" rows="1" placeholder="اكتب رسالة…"></textarea>
+            <button id="btn-send" class="send-btn" title="إرسال">
+              <svg viewBox="0 0 24 24" width="24" height="24"><path fill="#fff" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            </button>
+          </div>
+          <input type="file" id="file-input" class="hidden-input" />
+        </footer>
+      </div>
+    </main>
+  </section>
+
+  <!-- نافذة الإعدادات -->
+  <div id="settings-modal" class="modal hidden">
+    <div class="modal-card">
+      <h2>الإعدادات</h2>
+
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">الرد التلقائي (وضع التوفر)</div>
+          <div class="settings-hint">يرد مرة واحدة كل 30 دقيقة لكل محادثة تلقائياً عند وصول رسالة جديدة.</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="ar-enabled" />
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <label class="field">
+        <span>نص الرسالة التلقائية</span>
+        <textarea id="ar-message" rows="3" placeholder="مثال: أهلاً، أنا الآن غير متوفّر وسأرد عليك لاحقاً."></textarea>
+      </label>
+
+      <div class="modal-actions">
+        <button id="btn-ar-save" class="btn-primary btn-inline">حفظ</button>
+        <button id="btn-settings-close" class="btn-link">إغلاق</button>
+      </div>
+
+      <div class="about">تليجرام فورك v1.4.0 — عميل مفتوح مبني بجافاسكريبت</div>
+    </div>
+  </div>
+
+  <!-- قائمة خيارات الرسالة العائمة -->
+  <div id="msg-menu" class="msg-menu hidden"></div>
+
+  <!-- تنبيهات صغيرة -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
