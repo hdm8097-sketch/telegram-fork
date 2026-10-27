@@ -35,8 +35,34 @@ function show(screenId) {
   const boot = $('boot');
   if (boot) boot.remove();
   for (const s of document.querySelectorAll('.screen')) s.classList.add('hidden');
+  document.body.classList.remove('chat-open'); // واجهة الهاتف: نبدأ دائماً بقائمة المحادثات
   $(screenId).classList.remove('hidden');
 }
+
+/* ---------------- وضع الهاتف ---------------- */
+
+const MOBILE_MQ = typeof window.matchMedia === 'function'
+  ? window.matchMedia('(max-width: 760px)')
+  : { matches: false };
+
+function isMobileLayout() {
+  return Boolean(MOBILE_MQ.matches);
+}
+
+// زر الرجوع في رأس المحادثة (شاشات الهاتف فقط)
+function closeMobileChat() {
+  if (history.state && history.state.tgChat) {
+    history.back(); // يعيد التوفر عبر popstate
+    return;
+  }
+  document.body.classList.remove('chat-open');
+}
+
+window.addEventListener('popstate', () => {
+  document.body.classList.remove('chat-open');
+});
+
+$('btn-back').addEventListener('click', closeMobileChat);
 
 let toastTimer = null;
 function toast(text, isError = false) {
@@ -435,6 +461,15 @@ async function openChat(peerKey) {
   state.messages = [];
   state.msgIds = new Set();
   state.hasMore = false;
+
+  // واجهة الهاتف: ننتقل فوراً إلى شاشة المحادثة
+  if (isMobileLayout()) {
+    document.body.classList.add('chat-open');
+    if (!(history.state && history.state.tgChat)) {
+      try { history.pushState({ tgChat: 1 }, ''); } catch {}
+    }
+  }
+
   clearContext();
   clearPendingFile();
   cancelRecording();

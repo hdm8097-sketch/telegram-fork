@@ -1132,6 +1132,162 @@ html, body {
   border-radius: 50%;
 }
 
+/* ============================================================
+   واجهة الهاتف — تصميم متجاوب (≤ 760px)
+   ============================================================ */
+
+.back-btn { display: none; }
+
+@media (max-width: 760px) {
+  html, body {
+    -webkit-text-size-adjust: 100%;
+    overscroll-behavior: none;
+  }
+
+  /* ارتفاع يتكيّف مع شريط عنوان المتصفح في الهواتف */
+  .screen,
+  #screen-main,
+  .sidebar,
+  .chat,
+  .auth-screen { height: 100dvh; }
+
+  button { touch-action: manipulation; }
+
+  /* منع تقريب iOS التلقائي عند التركيز في الحقول */
+  #msg-input,
+  #search-input,
+  #chat-search-input,
+  .field input,
+  .field textarea,
+  .modal-card textarea { font-size: 16px; }
+
+  /* ---- الشاشة الرئيسية: طبقة واحدة بدل صف ---- */
+  #screen-main {
+    display: block;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sidebar {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    min-width: 0;
+    border-left: none;
+    height: auto;
+  }
+
+  .chat {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: auto;
+    display: none;
+  }
+
+  body.chat-open .sidebar { display: none; }
+  body.chat-open .chat { display: flex; animation: chatSlide 0.18s ease-out; }
+
+  @keyframes chatSlide {
+    from { opacity: 0.5; transform: translateX(-14px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  /* ---- رأس المحادثة ---- */
+  .back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text);
+    flex-shrink: 0;
+  }
+
+  .chat-header {
+    padding: 6px 8px;
+    gap: 8px;
+    min-height: 54px;
+  }
+
+  .chat-header-text { flex: 1; min-width: 0; }
+  .chat-title, .chat-subtitle {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .header-btn { margin-right: 4px; }
+
+  /* ---- الشريط الجانبي ---- */
+  .sidebar-header { padding: 8px 10px; min-height: 54px; }
+  .search-wrap { padding: 6px 10px 8px; }
+
+  .dialog { min-height: 62px; padding-top: 10px; padding-bottom: 10px; }
+
+  .icon-btn { padding: 10px; }
+
+  /* ---- الرسائل ---- */
+  .messages { padding: 8px 8px 4px; }
+  .msg-media img { max-width: min(300px, 76vw); max-height: 56vh; }
+  .msg-video { width: min(300px, 78vw); max-height: 56vh; }
+  .msg-video.round { width: 180px; height: 180px; }
+  .voice-player { min-width: min(240px, 72vw); }
+  .voice-player audio { width: min(210px, 52vw); }
+  .media-box { min-width: 180px; }
+
+  .msg-menu {
+    max-width: calc(100vw - 16px);
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  /* ---- شريط الكتابة ---- */
+  .composer-wrap { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+  .composer { padding: 8px; gap: 6px; }
+
+  .attach-btn {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 11px;
+  }
+
+  .send-btn { width: 46px; height: 46px; }
+
+  #msg-input { padding: 11px 14px; }
+
+  .sticker-panel { max-height: 42vh; }
+  .sticker-grid { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); }
+
+  .rec-bar { padding: 8px 10px; gap: 8px; }
+  .rec-btn { width: 38px; height: 38px; }
+
+  /* ---- النوافذ والشاشات ---- */
+  .modal { align-items: flex-end; }
+
+  .modal-card {
+    width: 100%;
+    max-width: none;
+    border-radius: 16px 16px 0 0;
+    padding: 22px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+    animation: sheetUp 0.2s ease-out;
+  }
+
+  @keyframes sheetUp {
+    from { transform: translateY(24px); opacity: 0.6; }
+    to { transform: none; opacity: 1; }
+  }
+
+  .auth-card {
+    padding: 28px 20px 24px;
+    border-radius: 14px;
+    box-shadow: none;
+  }
+
+  .auth-logo svg { width: 52px; height: 52px; }
+
+  .drop-overlay { font-size: 15px; padding: 0 20px; text-align: center; }
+}
+
 /* ---------------- التنبيهات ---------------- */
 .toast {
   position: fixed;

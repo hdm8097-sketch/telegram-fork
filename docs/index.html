@@ -2,6 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' wss: https:; img-src 'self' blob: data:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:" />
   <title>تليجرام فورك</title>
   <link rel="stylesheet" href="styles.css" />
@@ -135,6 +136,9 @@
 
       <div id="chat-view" class="chat-view hidden">
         <header class="chat-header">
+          <button id="btn-back" class="icon-btn back-btn" title="رجوع إلى قائمة المحادثات">
+            <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M8.6 5.4L15.2 12l-6.6 6.6-1.4-1.4L12.4 12 7.2 6.8z"/></svg>
+          </button>
           <div id="chat-avatar" class="avatar avatar-md">؟</div>
           <div class="chat-header-text">
             <div id="chat-title" class="chat-title">…</div>
@@ -217,7 +221,7 @@
         <button id="btn-settings-close" class="btn-link">إغلاق</button>
       </div>
 
-      <div class="about">تليجرام فورك v1.6.0 — عميل مفتوح مبني بجافاسكريبت</div>
+      <div class="about">تليجرام فورك v1.7.0 — عميل مفتوح مبني بجافاسكريبت</div>
     </div>
   </div>
 
